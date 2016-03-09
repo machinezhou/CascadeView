@@ -3,11 +3,14 @@ package com.lawson.library;
 import android.content.Context;
 import android.support.annotation.DimenRes;
 import android.support.v4.view.ViewCompat;
-import android.support.v4.view.animation.LinearOutSlowInInterpolator;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.animation.AnimationSet;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
 import java.util.ArrayList;
@@ -23,11 +26,11 @@ public class CascadeView extends FrameLayout {
   private static final int COVER_POSITION_IN_CACHE = 0;
 
   private int insets = 0;
+  private float ratio = 0.4f;
 
   private final List<ViewHolder> cache = new ArrayList<>();
   private final ArrayList<ViewHolder> mAttachedScrap = new ArrayList<>();
-  private final LinearOutSlowInInterpolator linearOutSlowInInterpolator =
-      new LinearOutSlowInInterpolator();
+
   private int visibleViewCount = DEFAULT_COUNT;
   private int coverPositionInItems;
   private boolean mRunPredictiveAnimations = false;
@@ -99,7 +102,7 @@ public class CascadeView extends FrameLayout {
   }
 
   public void setInsetsPx(int px) {
-    insets = context.getResources().getDimensionPixelSize(px);
+    insets = px;
   }
 
   public void setOnSwipeToLastListener(OnScrollListener listener) {
@@ -279,42 +282,17 @@ public class CascadeView extends FrameLayout {
 
   private void moveCover(int distance) {
     ViewHolder holder = getCoverViewHolder();
+    distance *= ratio;
     holder.itemView.layout(initChildLeft, initChildTop + distance, initChildRight,
         initChildBottom + distance);
   }
 
   private void finishCoverMoving(View v) {
-    finishMovingAnimation(v, 0, 0, v.getTop(), initChildBottom, false);
+    v.startAnimation(new MoveAnimation(v, 0, 0, v.getTop(), initChildBottom, false));
   }
 
   private void finishLastMoving(View v) {
-    finishMovingAnimation(v, 0, 0, initChildBottom, initChildTop, true);
-  }
-
-  public void finishMovingAnimation(final View v, float fromXDelta, float toXDelta,
-      float fromYDelta, float toYDelta, final boolean upOrDown) {
-    TranslateAnimation animation =
-        new TranslateAnimation(fromXDelta, toXDelta, fromYDelta, toYDelta);
-    animation.setInterpolator(linearOutSlowInInterpolator);
-    animation.setDuration(400);
-    animation.setFillAfter(true);
-    animation.setAnimationListener(new Animation.AnimationListener() {
-      @Override public void onAnimationStart(Animation animation) {
-        mRunPredictiveAnimations = true;
-      }
-
-      @Override public void onAnimationRepeat(Animation animation) {
-      }
-
-      @Override public void onAnimationEnd(Animation animation) {
-        mRunPredictiveAnimations = false;
-        v.clearAnimation();
-        if (!upOrDown) { //down
-          removeCover();
-        }
-      }
-    });
-    v.startAnimation(animation);
+    v.startAnimation(new MoveAnimation(v, 0, 0, initChildBottom, initChildTop, true));
   }
 
   private ViewHolder getViewHolderForPosition(int position) {
@@ -352,6 +330,55 @@ public class CascadeView extends FrameLayout {
 
     public void onScrollToCover() {
 
+    }
+  }
+
+  public class MoveAnimation extends AnimationSet implements Animation.AnimationListener {
+    private final View view;
+    private final boolean up;
+    private final TranslateAnimation translateAnimation;
+    private final ScaleAnimation scaleAnimation;
+    private final AlphaAnimation alphaAnimation;
+    private final DecelerateInterpolator decelerateInterpolator = new DecelerateInterpolator();
+
+    public MoveAnimation(final View v, float fromXDelta, float toXDelta, float fromYDelta,
+        float toYDelta, final boolean upOrDown) {
+      super(true);
+      view = v;
+      up = upOrDown;
+
+      translateAnimation = new TranslateAnimation(fromXDelta, toXDelta, fromYDelta, toYDelta);
+      translateAnimation.setInterpolator(decelerateInterpolator);
+      translateAnimation.setAnimationListener(this);
+
+      scaleAnimation =
+          !up ? new ScaleAnimation(1.0f, 0.0f, 1.0f, 0.0f, Animation.RELATIVE_TO_SELF, 0.5f,
+              Animation.RELATIVE_TO_SELF, 1.0f)
+              : new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f,
+                  Animation.RELATIVE_TO_SELF, 1.0f);
+      alphaAnimation = !up ? new AlphaAnimation(1.0f, 0.0f) : new AlphaAnimation(0.0f, 1.0f);
+
+      setDuration(500);
+      setFillAfter(true);
+      addAnimation(translateAnimation);
+      addAnimation(scaleAnimation);
+      addAnimation(alphaAnimation);
+    }
+
+    @Override public void onAnimationEnd(Animation animation) {
+      mRunPredictiveAnimations = false;
+      view.clearAnimation();
+      if (!up) { //down
+        removeCover();
+      }
+    }
+
+    @Override public void onAnimationRepeat(Animation animation) {
+
+    }
+
+    @Override public void onAnimationStart(Animation animation) {
+      mRunPredictiveAnimations = true;
     }
   }
 

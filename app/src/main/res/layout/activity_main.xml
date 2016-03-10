@@ -4,11 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.lawson.cascadeview.MainActivity">
+    tools:context="com.lawson.cascadeview.MainActivity"
+>
 
   <com.lawson.library.CascadeView
+      android:padding="5dp"
       android:id="@+id/cascade_view"
       android:layout_width="match_parent"
-      android:layout_height="match_parent"/>
+      android:layout_height="match_parent"
+  />
 
 </RelativeLayout>

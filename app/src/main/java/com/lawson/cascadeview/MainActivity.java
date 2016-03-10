@@ -20,7 +20,9 @@ public class MainActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
     cascadeView = (CascadeView) findViewById(R.id.cascade_view);
-    cascadeView.setInsets(R.dimen.insets);
+    demoCasAdapter = new DemoCasAdapter();
+    cascadeView.setAdapter(demoCasAdapter);
+    cascadeView.setOnSwipeToLastListener(onScrollListener);
   }
 
   @Override protected void onResume() {
@@ -33,10 +35,7 @@ public class MainActivity extends AppCompatActivity {
     for (int i = 0; i < DEFAULT_LIMIT; i++) {
       list.add("this is " + i);
     }
-
-    demoCasAdapter = new DemoCasAdapter();
-    cascadeView.setAdapter(demoCasAdapter);
-    cascadeView.setOnSwipeToLastListener(onScrollListener);
+    demoCasAdapter.notifyDataSetChanged();
     mCurrentOffset = list.size();
   }
 

@@ -1,8 +1,6 @@
 package com.lawson.library;
 
 import android.content.Context;
-import android.support.annotation.DimenRes;
-import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,10 +20,8 @@ import java.util.List;
 public class CascadeView extends FrameLayout {
 
   private static final int DEFAULT_COUNT = 2;
-  private static final int MIN_FLING_DISTANCE = 80;
   private static final int COVER_POSITION_IN_CACHE = 0;
 
-  private int insets = 0;
   private float ratio = 0.4f;
 
   private final List<ViewHolder> cache = new ArrayList<>();
@@ -91,18 +87,12 @@ public class CascadeView extends FrameLayout {
 
     coverPositionInItems = 0;
 
-    for (int i = 0; i < visibleViewCount; i++) {
-      ViewHolder vh = adapter.createView();
-      add(vh, i);
+    if (adapter.getItemCount() > 0){
+      for (int i = 0; i < visibleViewCount; i++) {
+        ViewHolder vh = adapter.createView();
+        add(vh, i);
+      }
     }
-  }
-
-  public void setInsets(@DimenRes int id) {
-    insets = context.getResources().getDimensionPixelSize(id);
-  }
-
-  public void setInsetsPx(int px) {
-    insets = px;
   }
 
   public void setOnSwipeToLastListener(OnScrollListener listener) {
@@ -177,7 +167,7 @@ public class CascadeView extends FrameLayout {
   }
 
   private boolean scrollToTopEdge(float d) {
-    return d < 0 && Math.abs(d) > MIN_FLING_DISTANCE;
+    return d < 0 && Math.abs(d) > getCoverViewHolder().itemView.getPaddingTop();
   }
 
   @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -188,8 +178,10 @@ public class CascadeView extends FrameLayout {
     final int widthSize = MeasureSpec.getSize(widthMeasureSpec);
     final int heightSize = MeasureSpec.getSize(heightMeasureSpec);
 
-    int width;
-    int height;
+    measureChildren(widthMeasureSpec, heightMeasureSpec);
+
+    int width = getPaddingLeft() + getPaddingRight() + getMeasuredWidth();
+    int height = getPaddingTop() + getPaddingBottom() + getMeasuredHeight();
 
     switch (widthMode) {
       case MeasureSpec.EXACTLY:
@@ -198,7 +190,6 @@ public class CascadeView extends FrameLayout {
         break;
       case MeasureSpec.UNSPECIFIED:
       default:
-        width = ViewCompat.getMinimumWidth(this);
         break;
     }
 
@@ -209,37 +200,43 @@ public class CascadeView extends FrameLayout {
         break;
       case MeasureSpec.UNSPECIFIED:
       default:
-        height = ViewCompat.getMinimumHeight(this);
         break;
     }
 
     setMeasuredDimension(width, height);
-    measureChildren(widthMeasureSpec - insets, heightMeasureSpec - insets);
   }
 
   @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     int count = getChildCount();
+
+    int l = getPaddingLeft();
+    int t = getPaddingTop();
+
     for (int i = 0; i < count; i++) {
       View child = getChildAt(i);
 
-      child.layout(insets, insets, child.getMeasuredWidth(), child.getMeasuredHeight());
+      child.layout(l, t, child.getMeasuredWidth() + l, child.getMeasuredHeight() + t);
       if (i == count - 1) {
-        initChildLeft = insets;
-        initChildRight = child.getMeasuredWidth();
-        initChildTop = insets;
-        initChildBottom = child.getMeasuredHeight();
+        initChildLeft = l;
+        initChildRight = child.getMeasuredWidth() + l;
+        initChildTop = t;
+        initChildBottom = child.getMeasuredHeight() + t;
       }
     }
   }
 
   private void remeasureChildren() {
     int count = getChildCount();
+
+    int l = getPaddingLeft();
+    int t = getPaddingTop();
+
     if (count > 0) {
       View child = getChildAt(count - 1);
-      initChildLeft = insets;
-      initChildRight = child.getMeasuredWidth();
-      initChildTop = insets;
-      initChildBottom = child.getMeasuredHeight();
+      initChildLeft = l;
+      initChildRight = child.getMeasuredWidth() + l;
+      initChildTop = t;
+      initChildBottom = child.getMeasuredHeight() + t;
     }
   }
 
@@ -272,8 +269,7 @@ public class CascadeView extends FrameLayout {
         if (scrollToTopEdge(delta)) {
           removeLast();
         } else {
-          ViewHolder holder = getCoverViewHolder();
-          finishCoverMoving(holder.itemView);
+          finishCoverMoving(getCoverViewHolder().itemView);
         }
         break;
     }
@@ -384,6 +380,7 @@ public class CascadeView extends FrameLayout {
 
   private final CasAdapterDataObserver mObserver = new CasAdapterDataObserver() {
     @Override public void onChanged() {
+      refresh();
     }
 
     @Override public void onItemRangeChanged(int positionStart, int itemCount) {
